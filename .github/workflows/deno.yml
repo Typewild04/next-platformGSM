@@ -1,0 +1,146 @@
+#import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { CheckCircle } from "lucide-react";
+import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { toast } from "react-hot-toast";
+
+const mapContainerStyle = {
+  width: "100%",
+  height: "400px",
+};
+const center = { lat: -34.6037, lng: -58.3816 };
+
+export default function DeliveryDashboard() {
+  const [deliveries, setDeliveries] = useState([
+    { id: 1, client: "Juan Pérez", address: "Calle 123", status: "En camino", location: { lat: -34.6037, lng: -58.3816 } },
+    { id: 2, client: "María López", address: "Avenida 456", status: "Pendiente", location: { lat: -34.6099, lng: -58.3925 } },
+  ]);
+
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDeliveries((prevDeliveries) =>
+        prevDeliveries.map((delivery) => {
+          if (delivery.status === "En camino") {
+            return {
+              ...delivery,
+              location: {
+                lat: delivery.location.lat + (Math.random() - 0.5) * 0.01,
+                lng: delivery.location.lng + (Math.random() - 0.5) * 0.01,
+              },
+            };
+          }
+          return delivery;
+        })
+      );
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateStatus = (id, newStatus) => {
+    setDeliveries((prevDeliveries) =>
+      prevDeliveries.map((d) => (d.id === id ? { ...d, status: newStatus } : d))
+    );
+    toast.success(`Entrega #${id} marcada como ${newStatus}`);
+  };
+
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-bold mb-4">Gestión de Entregas</h1>
+      <Card className="mb-6">
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Dirección</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Acción</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {deliveries.map((delivery) => (
+                <TableRow key={delivery.id}>
+                  <TableCell>{delivery.id}</TableCell>
+                  <TableCell>{delivery.client}</TableCell>
+                  <TableCell>{delivery.address}</TableCell>
+                  <TableCell>{delivery.status}</TableCell>
+                  <TableCell>
+                    {delivery.status !== "Entregado" && (
+                      <Button onClick={() => updateStatus(delivery.id, "Entregado")}>
+                        <CheckCircle className="w-4 h-4 mr-2" /> Marcar Entregado
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <h2 className="text-lg font-semibold mb-4">Ubicación en Tiempo Real</h2>
+          {isLoaded ? (
+            <GoogleMap mapContainerStyle={mapContainerStyle} center={center} zoom={12}>
+              {deliveries.map((delivery) => (
+                <Marker key={delivery.id} position={delivery.location} />
+              ))}
+            </GoogleMap>
+          ) : (
+            <p>Cargando mapa...</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+ This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+# This workflow will install Deno then run `deno lint` and `deno test`.
+# For more information see: https://github.com/denoland/setup-deno
+
+name: Deno
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        # uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31  # v1.1.2
+        with:
+          deno-version: v1.x
+
+      # Uncomment this step to verify the use of 'deno fmt' on each commit.
+      # - name: Verify formatting
+      #   run: deno fmt --check
+
+      - name: Run linter
+        run: deno lint
+
+      - name: Run tests
+        run: deno test -A
